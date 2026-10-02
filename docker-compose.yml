@@ -1,0 +1,46 @@
+# Levanta ChíaVial completo:  docker compose up --build
+# Web y API: http://localhost:3000  ·  Correos de prueba (Mailpit): http://localhost:8025
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: chiavial
+      POSTGRES_USER: chiavial
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-chiavial}
+    volumes:
+      - datos_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chiavial -d chiavial"]
+      interval: 5s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025"
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://chiavial:${DB_PASSWORD:-chiavial}@db:5432/chiavial
+      JWT_SECRET: ${JWT_SECRET:-cambie-este-secreto-antes-de-publicar}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@chiavial.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin12345}
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      INGESTA_FUENTE: ${INGESTA_FUENTE:-csv}
+      DATA_DIR: /app/data
+      UPLOADS_DIR: /app/api/uploads
+      GEOCODER: ${GEOCODER:-nominatim}
+    ports:
+      - "3000:3000"
+    volumes:
+      - fotos:/app/api/uploads
+
+volumes:
+  datos_db:
+  fotos:

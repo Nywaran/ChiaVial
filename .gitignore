@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+api/uploads/
+api/test/uploads_prueba/
+*.log
+.DS_Store

@@ -1,0 +1,5 @@
+"marca_vehiculo","modelo_vehiculo","tipo_vehiculo","edad_vehiculo","fecha_accidente","gravedad_accidente","departamento_accidente","municipio_accidente","autoridad_de_transito"
+"YAMAHA","2020","MOTOCICLETA","5","03/2025","CON HERIDOS","CUNDINAMARCA","CHIA","SECRETARIA DE MOVILIDAD"
+"CHEVROLET","2010","AUTOMOVIL","15","04/2025","CON MUERTOS","CUNDINAMARCA","CHÍA","POLICIA"
+"MAZDA","2015","AUTOMOVIL","10","04/2025","CON HERIDOS","CUNDINAMARCA","CHÍA - LA PAZ","POLICIA"
+"KIA","2018","AUTOMOVIL","7","04/2025","CON HERIDOS","CUNDINAMARCA","CAJICA","POLICIA"

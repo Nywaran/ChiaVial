@@ -1,0 +1,7 @@
+**/node_modules
+web/dist
+api/uploads
+api/test/uploads_prueba
+.env
+**/.env
+.git
