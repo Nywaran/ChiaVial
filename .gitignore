@@ -5,3 +5,4 @@ api/uploads/
 api/test/uploads_prueba/
 *.log
 .DS_Store
+api/test/.uploads/
