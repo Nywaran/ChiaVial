@@ -10,7 +10,7 @@ export function MapaBase({ children, alto, centro = CENTRO_CHIA, zoom = 13, etiq
     <div className={`mapa ${alto || ""}`} role="region" aria-label={etiqueta}>
       <MapContainer center={centro} zoom={zoom} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">colaboradores de OpenStreetMap</a>'
           maxZoom={19}
         />

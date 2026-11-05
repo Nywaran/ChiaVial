@@ -23,13 +23,16 @@ export function crearApp() {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          imgSrc: ["'self'", "data:", "blob:", "https://*.tile.openstreetmap.org"],
+          imgSrc: ["'self'", "data:", "blob:", "https://tile.openstreetmap.org"],
           connectSrc: ["'self'"],
           // www.gstatic.com: cargador de Google Charts (tablero de indicadores)
           styleSrc: ["'self'", "'unsafe-inline'", "https://www.gstatic.com"],
           scriptSrc: ["'self'", "https://www.gstatic.com"],
         },
       },
+      // OpenStreetMap exige el encabezado Referer en las solicitudes de mosaicos (política de uso de teselas);
+      // helmet lo elimina por defecto (no-referrer). Así se envía solo el origen, nunca la ruta.
+      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
     })
   );
   app.use(express.json({ limit: "2mb" }));
