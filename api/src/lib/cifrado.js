@@ -37,12 +37,12 @@ function obtenerClaves() {
   return claves;
 }
 
-/** Solo para pruebas: olvida las claves cargadas. */
 /** Valida la clave al arrancar el servidor (en producción, sin CIFRADO_CLAVE válida no arranca). */
 export function verificarClave() {
   obtenerClaves();
 }
 
+/** Solo para pruebas: olvida las claves cargadas. */
 export function reiniciarClaves() {
   claves = null;
 }
@@ -79,7 +79,6 @@ export function descifrar(valor, contexto) {
   return Buffer.concat([d.update(cifrado), d.final()]).toString("utf8");
 }
 
-/** Descifra sin lanzar error (para vistas): devuelve null si no se puede. */
 /** Como descifrar(), pero nunca lanza: nulo → nulo, texto plano heredado → tal cual, alterado → null. */
 export function descifrarSeguro(valor, contexto) {
   if (valor === null || valor === undefined) return null;
