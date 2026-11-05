@@ -5,3 +5,6 @@ api/test/uploads_prueba
 .env
 **/.env
 .git
+api/test
+docs
+deploy

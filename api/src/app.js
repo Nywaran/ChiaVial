@@ -11,6 +11,8 @@ import observatorio from "./routes/observatorio.js";
 import comparendos from "./routes/comparendos.js";
 import reportes from "./routes/reportes.js";
 import admin from "./routes/admin.js";
+import telegram, { webhook as webhookTelegram } from "./routes/telegram.js";
+import dashboard from "./routes/dashboard.js";
 
 export function crearApp() {
   const app = express();
@@ -23,8 +25,9 @@ export function crearApp() {
           defaultSrc: ["'self'"],
           imgSrc: ["'self'", "data:", "blob:", "https://*.tile.openstreetmap.org"],
           connectSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'"],
+          // www.gstatic.com: cargador de Google Charts (tablero de indicadores)
+          styleSrc: ["'self'", "'unsafe-inline'", "https://www.gstatic.com"],
+          scriptSrc: ["'self'", "https://www.gstatic.com"],
         },
       },
     })
@@ -32,6 +35,8 @@ export function crearApp() {
   app.use(express.json({ limit: "2mb" }));
   app.use(cookieParser());
   app.use(cargarUsuario);
+  // Webhook de Telegram: autenticado con su propio secreto, por eso va antes de la protección CSRF
+  app.post("/api/telegram/webhook", webhookTelegram);
   app.use("/api", protegerCsrf);
 
   // Límite de intentos para autenticación (complementa el bloqueo por cuenta)
@@ -45,6 +50,8 @@ export function crearApp() {
   app.use("/api/comparendos", comparendos);
   app.use("/api/reportes", reportes);
   app.use("/api/admin", admin);
+  app.use("/api/telegram", telegram);
+  app.use("/api/dashboard", dashboard);
   app.use("/api", (req, res) => res.status(404).json({ error: "Ruta no encontrada." }));
 
   // En producción la API sirve también la interfaz web compilada

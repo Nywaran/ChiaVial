@@ -12,6 +12,8 @@ import { ingestarTodo, ingestarConjunto } from "../etl/ingesta.js";
 import { ORDEN_INGESTA } from "../etl/conjuntos.js";
 import { geocodificarPendientes } from "../lib/geocodificar.js";
 import * as N from "../lib/normalizar.js";
+import { porTelegram } from "../lib/notificaciones.js";
+import { telegramConfigurado } from "../lib/telegram.js";
 
 const r = Router();
 const soloAdmin = requiereRol("admin");
@@ -220,6 +222,27 @@ r.get("/bitacora", soloAdmin, async (req, res) => {
 r.get("/correos", soloAdmin, async (req, res) => {
   const { rows } = await q(`SELECT * FROM correos ORDER BY id DESC LIMIT 100`);
   res.json({ correos: rows, smtp_configurado: !!config.smtp.host });
+});
+
+// ───────── Mensajería (Telegram) ─────────
+r.get("/notificaciones", soloAdmin, async (req, res) => {
+  const [lista, resumen, vinculados] = await Promise.all([
+    q(`SELECT n.id, n.canal, n.evento, n.estado, n.detalle, n.creado_en, u.nombre AS usuario, u.rol
+         FROM notificaciones n LEFT JOIN usuarios u ON u.id = n.usuario_id ORDER BY n.id DESC LIMIT 200`),
+    q(`SELECT canal, estado, count(*)::int AS n FROM notificaciones GROUP BY 1, 2 ORDER BY 1, 2`),
+    q(`SELECT u.rol, count(*)::int AS n FROM telegram_vinculos v JOIN usuarios u ON u.id = v.usuario_id GROUP BY 1`),
+  ]);
+  res.json({
+    notificaciones: lista.rows, resumen: resumen.rows, vinculados: vinculados.rows,
+    telegram: { configurado: telegramConfigurado(), modo: config.telegram.modo, bot: config.telegram.botUsername || null },
+  });
+});
+
+r.post("/notificaciones/prueba", soloAdmin, async (req, res) => {
+  const resultado = await porTelegram(req.usuario.id, "prueba", "✅ Mensaje de prueba de ChíaVial: las notificaciones por Telegram funcionan.");
+  const msj = { enviado: "Mensaje enviado a tu Telegram.", omitido: "Tu cuenta no tiene Telegram vinculado (Mi cuenta → Vincular Telegram).",
+    sin_configurar: "El servidor no tiene TELEGRAM_BOT_TOKEN.", error: "Telegram rechazó el envío; revisa el registro." };
+  res.status(resultado === "enviado" ? 200 : 400).json({ resultado, mensaje: msj[resultado] });
 });
 
 export default r;

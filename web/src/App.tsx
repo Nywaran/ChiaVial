@@ -10,6 +10,7 @@ import { Ingresar, Registro, Verificar, Olvide, Restablecer, Cuenta } from "./pa
 import Politica from "./pages/Politica";
 import Panel from "./pages/Panel";
 import Admin from "./pages/Admin";
+import Dashboard from "./pages/Dashboard";
 
 export default function App() {
   const { usuario, salir } = useSesion();
@@ -27,6 +28,7 @@ export default function App() {
             {(!usuario || usuario.rol === "ciudadano") && <NavLink to="/reportar" className={({ isActive }) => (isActive ? "activo" : "")}>Reportar</NavLink>}
             {usuario?.rol === "ciudadano" && <NavLink to="/mis-reportes" className={({ isActive }) => (isActive ? "activo" : "")}>Mis reportes</NavLink>}
             {esStaff && <NavLink to="/panel" className={({ isActive }) => (isActive ? "activo" : "")}>Panel de gestión</NavLink>}
+            {(usuario?.rol === "funcionario" || usuario?.rol === "admin") && <NavLink to="/tablero" className={({ isActive }) => (isActive ? "activo" : "")}>Tablero</NavLink>}
             {usuario?.rol === "admin" && <NavLink to="/admin" className={({ isActive }) => (isActive ? "activo" : "")}>Administración</NavLink>}
           </nav>
           <div className="usuario">
@@ -49,6 +51,7 @@ export default function App() {
           <Route path="/reportar" element={<Protegida roles={["ciudadano"]}><Reportar /></Protegida>} />
           <Route path="/mis-reportes" element={<Protegida roles={["ciudadano"]}><MisReportes /></Protegida>} />
           <Route path="/panel" element={<Protegida roles={["funcionario", "admin", "entidad"]}><Panel /></Protegida>} />
+          <Route path="/tablero" element={<Protegida roles={["funcionario", "admin"]}><Dashboard /></Protegida>} />
           <Route path="/admin" element={<Protegida roles={["admin"]}><Admin /></Protegida>} />
           <Route path="/ingresar" element={<Ingresar />} />
           <Route path="/registro" element={<Registro />} />

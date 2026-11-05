@@ -142,11 +142,78 @@ export function Cuenta() {
         <button type="submit">Guardar</button>
       </form>
       <hr style={{ margin: "1.5rem 0", border: 0, borderTop: "1px solid var(--borde)" }} />
+      <Telegram />
+      <hr style={{ margin: "1.5rem 0", border: 0, borderTop: "1px solid var(--borde)" }} />
       <h2>Eliminar mi cuenta</h2>
       <p className="tenue">Se borrarán tus datos personales. Tus reportes se conservan de forma anónima, sin placa ni autor.</p>
       {!confirmar ? <button className="peligro" onClick={() => setConfirmar(true)}>Eliminar mi cuenta</button> : (
         <div className="acciones"><span>¿Seguro? Esta acción no se puede deshacer.</span><button className="peligro" onClick={eliminar}>Sí, eliminar</button><button className="secundario" onClick={() => setConfirmar(false)}>Cancelar</button></div>
       )}
     </Caja>
+  );
+}
+
+type EstadoTelegram = { disponible: boolean; bot: string | null; vinculado: boolean; vinculado_en: string | null; notif_telegram: boolean };
+
+/** Vincula la cuenta con el bot de Telegram para recibir notificaciones. */
+function Telegram() {
+  const { usuario } = useSesion();
+  const [est, setEst] = useState<EstadoTelegram | null>(null);
+  const [enlace, setEnlace] = useState<{ enlace: string | null; codigo: string } | null>(null);
+  const [msg, setMsg] = useState<{ ok?: string; error?: string }>({});
+  const cargar = () => api.get<EstadoTelegram>("/telegram/estado").then(setEst).catch(() => {});
+  useEffect(() => { cargar(); }, []);
+  // Mientras hay un enlace pendiente, revisa cada 4 s si ya se vinculó
+  useEffect(() => {
+    if (!enlace || est?.vinculado) return;
+    const t = setInterval(cargar, 4000);
+    return () => clearInterval(t);
+  }, [enlace, est?.vinculado]);
+  useEffect(() => { if (est?.vinculado) setEnlace(null); }, [est?.vinculado]);
+
+  if (!est) return null;
+  const que = usuario?.rol === "ciudadano" ? "cuando cambie el estado de tus reportes" : "cuando lleguen reportes nuevos o se te asignen";
+  async function generar() {
+    setMsg({});
+    try { setEnlace(await api.post("/telegram/vincular")); } catch (e: any) { setMsg({ error: e.message }); }
+  }
+  async function quitar() {
+    try { await api.del("/telegram/vincular"); await cargar(); setMsg({ ok: "Telegram desvinculado." }); } catch (e: any) { setMsg({ error: e.message }); }
+  }
+  async function preferir(v: boolean) {
+    try { await api.patch("/telegram/preferencias", { notif_telegram: v }); await cargar(); } catch (e: any) { setMsg({ error: e.message }); }
+  }
+  return (
+    <section aria-labelledby="tg-titulo">
+      <h2 id="tg-titulo">Notificaciones por Telegram</h2>
+      <Mensaje ok={msg.ok} error={msg.error} />
+      {!est.disponible && !est.vinculado ? (
+        <p className="tenue">Este servidor aún no tiene configurado el bot de Telegram.</p>
+      ) : est.vinculado ? (
+        <>
+          <p>✅ Tu cuenta está vinculada. Te avisaremos {que}.</p>
+          <label style={{ display: "flex", gap: ".5rem", alignItems: "center", margin: ".5rem 0" }}>
+            <input type="checkbox" checked={est.notif_telegram} onChange={(e) => preferir(e.target.checked)} style={{ width: "auto" }} />
+            Recibir notificaciones por Telegram
+          </label>
+          <button className="secundario" onClick={quitar}>Desvincular Telegram</button>
+        </>
+      ) : enlace ? (
+        <>
+          <p>Abre el bot y pulsa <strong>Iniciar</strong>. El enlace vence en 15 minutos.</p>
+          {enlace.enlace ? (
+            <a className="boton" href={enlace.enlace} target="_blank" rel="noopener noreferrer">Abrir @{est.bot} en Telegram</a>
+          ) : (
+            <p>Envía al bot este mensaje: <code>/start {enlace.codigo}</code></p>
+          )}
+          <p className="muy-tenue" aria-live="polite">Esperando la confirmación de Telegram…</p>
+        </>
+      ) : (
+        <>
+          <p className="tenue">Recibe un mensaje en Telegram {que}. Guardamos tu identificador de chat cifrado.</p>
+          <button onClick={generar}>Vincular Telegram</button>
+        </>
+      )}
+    </section>
   );
 }

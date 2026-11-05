@@ -27,6 +27,10 @@ services:
     environment:
       DATABASE_URL: postgres://chiavial:${DB_PASSWORD:-chiavial}@db:5432/chiavial
       JWT_SECRET: ${JWT_SECRET:-cambie-este-secreto-antes-de-publicar}
+      # Clave de cifrado SOLO para pruebas locales. En producción use docker-compose.prod.yml y su propia clave.
+      CIFRADO_CLAVE: ${CIFRADO_CLAVE:-XDVWRt6DRH+QLEa2zDOXo/QWnO2WM16W68n4FR5DQeY=}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       APP_URL: ${APP_URL:-http://localhost:3000}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@chiavial.local}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin12345}

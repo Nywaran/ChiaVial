@@ -1,6 +1,5 @@
 // Cuentas y sesiones: RF-GEN-01, 02, 03; RNF-SEG-01, 03, 07, 10
 import { Router } from "express";
-import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { q, transaccion } from "../db.js";
@@ -8,9 +7,10 @@ import { config } from "../config.js";
 import { emitirSesion, cerrarSesion, requiereSesion } from "../middleware/auth.js";
 import { enviarCorreo, plantillas } from "../lib/correo.js";
 import { registrar } from "../lib/bitacora.js";
+import { hashToken, tokenAleatorio } from "../lib/cifrado.js";
 
 const r = Router();
-const token = () => crypto.randomBytes(32).toString("hex");
+const token = () => tokenAleatorio(32); // en la base de datos solo se guarda su SHA-256
 const MAX_INTENTOS = 5;
 const BLOQUEO_MIN = 15;
 
@@ -32,7 +32,7 @@ r.post("/registro", async (req, res) => {
   const { rows } = await q(
     `INSERT INTO usuarios (nombre, email, password_hash, rol, token_verificacion, acepto_tratamiento_en)
      VALUES ($1,$2,$3,'ciudadano',$4, now()) RETURNING id`,
-    [nombre, email, hash, t]
+    [nombre, email, hash, hashToken(t)]
   );
   const [asunto, cuerpo] = plantillas.verificacion(nombre, `${config.appUrl}/verificar?token=${t}`);
   await enviarCorreo(email, asunto, cuerpo);
@@ -45,7 +45,7 @@ r.post("/verificar", async (req, res) => {
   if (!t) return res.status(400).json({ error: "Falta el código de verificación." });
   const { rows } = await q(
     `UPDATE usuarios SET email_verificado = TRUE, token_verificacion = NULL WHERE token_verificacion = $1 RETURNING id`,
-    [t]
+    [hashToken(t)]
   );
   if (!rows.length) return res.status(400).json({ error: "El enlace no es válido o ya fue usado." });
   res.json({ ok: true, mensaje: "Cuenta activada. Ya puedes iniciar sesión." });
@@ -95,7 +95,7 @@ r.post("/olvide", async (req, res) => {
   const { rows } = await q(`SELECT id, nombre FROM usuarios WHERE email = $1 AND activo`, [email]);
   if (rows.length) {
     const t = token();
-    await q(`UPDATE usuarios SET token_reset = $2, token_reset_expira = now() + interval '1 hour' WHERE id = $1`, [rows[0].id, t]);
+    await q(`UPDATE usuarios SET token_reset = $2, token_reset_expira = now() + interval '1 hour' WHERE id = $1`, [rows[0].id, hashToken(t)]);
     const [asunto, cuerpo] = plantillas.restablecer(rows[0].nombre, `${config.appUrl}/restablecer?token=${t}`);
     await enviarCorreo(email, asunto, cuerpo);
   }
@@ -111,7 +111,7 @@ r.post("/restablecer", async (req, res) => {
   const { rows } = await q(
     `UPDATE usuarios SET password_hash = $2, token_reset = NULL, token_reset_expira = NULL, intentos_fallidos = 0, bloqueado_hasta = NULL
       WHERE token_reset = $1 AND token_reset_expira > now() RETURNING id`,
-    [t, hash]
+    [hashToken(t), hash]
   );
   if (!rows.length) return res.status(400).json({ error: "El enlace no es válido o venció." });
   await registrar(rows[0].id, "restablecer_contrasena", "usuario", rows[0].id);

@@ -44,10 +44,27 @@ export const config = {
   adminEmail: process.env.ADMIN_EMAIL || "",
   adminPassword: process.env.ADMIN_PASSWORD || "",
   adminNombre: process.env.ADMIN_NOMBRE || "Administrador ChíaVial",
+
+  // Cookie de sesión con atributo Secure (por defecto: sí, cuando APP_URL usa https)
+  cookieSecure: process.env.COOKIE_SECURE
+    ? process.env.COOKIE_SECURE === "true"
+    : (process.env.APP_URL || "").startsWith("https://"),
+
+  // Mensajería por Telegram (Bot API). Sin token, el canal queda desactivado.
+  telegram: {
+    token: process.env.TELEGRAM_BOT_TOKEN || "",
+    botUsername: (process.env.TELEGRAM_BOT_USERNAME || "").replace(/^@/, ""),
+    modo: process.env.TELEGRAM_MODO || "polling", // polling | webhook | off
+    webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || "",
+    apiUrl: process.env.TELEGRAM_API_URL || "https://api.telegram.org",
+  },
 };
 
 config.esProduccion = config.entorno === "production";
 
 if (config.esProduccion && config.jwtSecret === "solo-para-desarrollo-cambiar") {
   throw new Error("Defina JWT_SECRET en producción.");
+}
+if (config.telegram.token && config.telegram.modo === "webhook" && config.telegram.webhookSecret.length < 16) {
+  throw new Error("TELEGRAM_MODO=webhook requiere TELEGRAM_WEBHOOK_SECRET (mínimo 16 caracteres).");
 }

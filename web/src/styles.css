@@ -177,3 +177,11 @@ tbody tr.clic:hover td { background: #f3f2ee; }
 .grafico { width: 100%; height: 280px; }
 .recharts-cartesian-axis-tick-value { font-size: 12px; fill: var(--texto-2); }
 details summary { cursor: pointer; color: var(--verde); font-weight: 600; font-size: 0.9rem; margin-top: 0.5rem; }
+
+/* Tablero de indicadores (Google Charts) */
+h2.seccion { margin: 1.75rem 0 0; font-size: 1.15rem; color: var(--texto-2); border-bottom: 1px solid var(--borde); padding-bottom: 0.35rem; }
+.filtros > label { display: flex; flex-direction: column; gap: 0.2rem; }
+.tarjeta.gchart { min-width: 0; }
+.tarjeta.gchart h2 { font-size: 1rem; margin: 0 0 0.25rem; }
+.tarjeta.gchart [role="img"] { width: 100%; min-height: 200px; }
+.tarjeta.gchart .tabla-env { max-height: 340px; overflow: auto; }

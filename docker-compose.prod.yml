@@ -1,0 +1,49 @@
+# ChíaVial · PRODUCCIÓN (VPS con aaPanel)
+# Uso:   cp .env.produccion.example .env   → edite los valores →   docker compose -f docker-compose.prod.yml up -d --build
+# La app escucha solo en 127.0.0.1:3000; el sitio de aaPanel (Nginx + Let's Encrypt) hace de proxy inverso.
+# La base de datos NO publica puertos: solo la ve el contenedor de la app.
+name: chiavial
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: chiavial
+      POSTGRES_USER: chiavial
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD en .env}
+    volumes:
+      - datos_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chiavial -d chiavial"]
+      interval: 10s
+      retries: 10
+
+  app:
+    build: .
+    image: chiavial:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://chiavial:${DB_PASSWORD}@db:5432/chiavial
+      DATA_DIR: /app/data
+      UPLOADS_DIR: /app/api/uploads
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - fotos:/app/api/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/salud || exit 1"]
+      interval: 30s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+volumes:
+  datos_db:
+  fotos:

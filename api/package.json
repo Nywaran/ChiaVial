@@ -11,7 +11,9 @@
     "ingesta": "node src/scripts/ingesta.js",
     "geocodificar": "node src/scripts/geocodificar.js",
     "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
-    "lint": "node src/scripts/lint.js"
+    "lint": "node src/scripts/lint.js",
+    "demo": "node src/scripts/demo.js",
+    "clave": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
   },
   "engines": {
     "node": ">=20"

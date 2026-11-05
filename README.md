@@ -58,6 +58,22 @@ Abra http://localhost:5173. Sin servidor SMTP, los correos quedan en **Administr
 | `npm test` | 21 pruebas (requiere la base `chiavial_test` con PostGIS, o `TEST_DATABASE_URL`) |
 | `npm run lint` | Verificación de sintaxis |
 
+## Despliegue en producción (VPS con aaPanel)
+
+Guía completa, con la lista de archivos que se despliegan: **[docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)**. En resumen:
+
+```bash
+cp .env.produccion.example .env        # complete APP_URL, DB_PASSWORD, JWT_SECRET, CIFRADO_CLAVE…
+docker compose -f docker-compose.prod.yml up -d --build
+```
+y en aaPanel: sitio con Let's Encrypt + proxy inverso a `http://127.0.0.1:3000`.
+
+## Tablero, cifrado y mensajería
+
+- **Tablero de indicadores** (`/tablero`, funcionario y administrador): Google Charts con datos de PostgreSQL (`GET /api/dashboard`): tiempos de respuesta, reportes por estado/categoría/semana/vereda, siniestros por mes y gravedad, comparendos por grupo. `npm run demo` (en `api/`) carga datos ficticios para verlo con movimiento; `npm run demo -- --borrar` los elimina.
+- **Cifrado** (`api/src/lib/cifrado.js`): AES-256-GCM para placas y chats de Telegram, HKDF-SHA256 para derivar claves, HMAC-SHA256 como índice ciego, SHA-256 para tokens de un solo uso y bcrypt para contraseñas. Clave maestra en `CIFRADO_CLAVE`.
+- **Telegram** (`api/src/lib/telegram.js`, `notificaciones.js`): el ciudadano vincula su cuenta desde «Mi cuenta» y recibe los cambios de estado; funcionarios y administradores reciben alertas de reportes nuevos; las entidades, las asignaciones. Cada envío queda en la tabla `notificaciones` (Administración → Telegram).
+
 ## Roles
 
 | Rol | Cómo se crea | Qué puede hacer |

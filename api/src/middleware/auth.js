@@ -17,7 +17,7 @@ export function emitirSesion(res, usuario) {
   res.cookie(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: config.esProduccion,
+    secure: config.cookieSecure,
     maxAge: min * 60 * 1000,
     path: "/",
   });

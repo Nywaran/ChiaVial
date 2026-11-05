@@ -46,5 +46,8 @@ export async function migrar() {
     });
     aplicadas.push(f);
   }
+  // Datos sensibles guardados antes del cifrado (idempotente)
+  const { cifrarDatosHeredados } = await import("./lib/migracion-cifrado.js");
+  await cifrarDatosHeredados();
   return aplicadas;
 }

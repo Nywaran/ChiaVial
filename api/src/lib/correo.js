@@ -24,7 +24,7 @@ export async function enviarCorreo(para, asunto, cuerpo) {
   } catch (e) {
     await q(`UPDATE correos SET error = $2 WHERE id = $1`, [rows[0].id, e.message]);
     console.warn("[correo]", e.message);
-    return { id: rows[0].id, enviado: false };
+    return { id: rows[0].id, enviado: false, error: e.message };
   }
 }
 

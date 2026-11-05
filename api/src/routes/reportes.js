@@ -9,8 +9,10 @@ import { z } from "zod";
 import { q, transaccion } from "../db.js";
 import { config } from "../config.js";
 import { requiereSesion, requiereRol } from "../middleware/auth.js";
-import { enviarCorreo, plantillas } from "../lib/correo.js";
+import { plantillas } from "../lib/correo.js";
+import { notificar, alertarRoles } from "../lib/notificaciones.js";
 import { registrar } from "../lib/bitacora.js";
+import { cifrar, descifrarSeguro } from "../lib/cifrado.js";
 
 const r = Router();
 fs.mkdirSync(config.uploadsDir, { recursive: true });
@@ -82,7 +84,9 @@ r.post("/", requiereRol("ciudadano"), recibirFotos, async (req, res) => {
   if (fechaHecho && (isNaN(fechaHecho) || fechaHecho > new Date(Date.now() + 5 * 60 * 1000))) {
     return res.status(400).json({ error: "La fecha del hecho no es válida." });
   }
-  const placa = d.tipo === "conducta" && d.placa ? d.placa.toUpperCase().replace(/[^A-Z0-9]/g, "") : null;
+  // RF-M01-03 / RNF-SEG: la placa se guarda cifrada con AES-256-GCM
+  const placaTexto = d.tipo === "conducta" && d.placa ? d.placa.toUpperCase().replace(/[^A-Z0-9]/g, "") : null;
+  const placa = placaTexto ? cifrar(placaTexto, "reportes.placa") : null;
 
   const fotos = [];
   for (const f of req.files || []) fotos.push(await guardarFoto(f.buffer));
@@ -110,6 +114,11 @@ r.post("/", requiereRol("ciudadano"), recibirFotos, async (req, res) => {
     await c.query(`INSERT INTO reporte_historial (reporte_id, estado_nuevo, usuario_id) VALUES ($1,'RECIBIDO',$2)`, [nuevoId, req.usuario.id]);
     return nuevoId;
   });
+  // Alerta por Telegram a funcionarios/admin vinculados (no bloquea la respuesta)
+  q(`SELECT nombre FROM catalogos WHERE tipo=$1 AND codigo=$2`, [d.tipo, d.categoria])
+    .then(({ rows }) => alertarRoles(["funcionario", "admin"], "nuevo_reporte",
+      `🆕 Nuevo reporte #${id}\n${rows[0]?.nombre || d.categoria} (${d.tipo})\n${d.descripcion.slice(0, 200)}\n\n${config.appUrl}/panel`))
+    .catch((e) => console.warn("[notificaciones]", e.message));
   res.status(201).json({ id, mensaje: "Reporte recibido. Puedes seguir su estado en «Mis reportes»." });
 });
 
@@ -197,6 +206,7 @@ r.get("/bandeja", requiereRol("funcionario", "admin", "entidad"), async (req, re
        LEFT JOIN entidades e ON e.id = r.entidad_asignada_id
       WHERE ${cond.join(" AND ")}
       ORDER BY r.creado_en DESC LIMIT 500`, params);
+  for (const row of rows) row.placa = descifrarSeguro(row.placa, "reportes.placa");
   res.json({ reportes: rows, radio_m: config.radioSiniestrosM, estados: ESTADOS });
 });
 
@@ -212,6 +222,7 @@ r.get("/:id", requiereSesion, async (req, res) => {
   if (!puede) return res.status(403).json({ error: "No tienes permiso para ver este reporte." });
   delete rep.geom;
   if (!esFuncionario(u)) delete rep.placa; // RF-M01-03
+  else rep.placa = descifrarSeguro(rep.placa, "reportes.placa");
   const [fotos, historial] = await Promise.all([
     q(`SELECT id FROM reporte_fotos WHERE reporte_id=$1 ORDER BY id`, [rep.id]),
     q(`SELECT h.estado_anterior, h.estado_nuevo, h.comentario, h.creado_en, us.nombre AS usuario
@@ -256,9 +267,13 @@ r.patch("/:id/estado", requiereRol("funcionario", "admin", "entidad"), async (re
       [rep.id, rep.estado, estado, comentario, req.usuario.id]);
   });
   await registrar(req.usuario.id, "cambio_estado_reporte", "reporte", rep.id, { de: rep.estado, a: estado });
-  if (rep.email) {
-    const [asunto, cuerpo] = plantillas.cambioEstado(rep.autor_nombre, rep.id, estado.replace("_", " ").toLowerCase(), comentario);
-    await enviarCorreo(rep.email, asunto, cuerpo);
+  if (rep.autor_id) {
+    const nombreEstado = estado.replace("_", " ").toLowerCase();
+    const [asunto, cuerpo] = plantillas.cambioEstado(rep.autor_nombre, rep.id, nombreEstado, comentario);
+    await notificar({ id: rep.autor_id, email: rep.email }, "cambio_estado", {
+      asunto, cuerpo,
+      telegram: `📋 Tu reporte #${rep.id} cambió a «${nombreEstado}».${comentario ? `\nComentario: ${comentario}` : ""}\n\n${config.appUrl}/mis-reportes`,
+    });
   }
   res.json({ ok: true });
 });
@@ -272,9 +287,9 @@ r.patch("/:id/asignar", requiereRol("funcionario", "admin"), async (req, res) =>
   if (!ent.rows.length) return res.status(400).json({ error: "Entidad no válida." });
   await q(`UPDATE reportes SET entidad_asignada_id=$2, fecha_objetivo=$3, actualizado_en=now() WHERE id=$1`, [req.params.id, entidadId, fecha]);
   await registrar(req.usuario.id, "asignar_reporte", "reporte", req.params.id, { entidad_id: entidadId, fecha_objetivo: fecha });
-  const dest = await q(`SELECT email FROM usuarios WHERE entidad_id=$1 AND rol='entidad' AND activo`, [entidadId]);
+  const dest = await q(`SELECT id, email FROM usuarios WHERE entidad_id=$1 AND rol='entidad' AND activo`, [entidadId]);
   const [asunto, cuerpo] = plantillas.asignacion(req.params.id, ent.rows[0].nombre, fecha);
-  for (const d of dest.rows) await enviarCorreo(d.email, asunto, cuerpo);
+  for (const d of dest.rows) await notificar(d, "asignacion", { asunto, cuerpo });
   res.json({ ok: true });
 });
 
