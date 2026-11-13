@@ -1,6 +1,7 @@
 # ChíaVial · PRODUCCIÓN (VPS con aaPanel)
 # Uso:   cp .env.produccion.example .env   → edite los valores →   docker compose -f docker-compose.prod.yml up -d --build
-# La app escucha solo en 127.0.0.1:3000; el sitio de aaPanel (Nginx + Let's Encrypt) hace de proxy inverso.
+# La app escucha solo en 127.0.0.1:${APP_PUERTO} (3000 por defecto); el sitio de aaPanel (Nginx + Let's Encrypt) hace de proxy inverso.
+# Si el VPS tiene otros sitios y el 3000 está ocupado, defina APP_PUERTO en .env (p. ej. 3010).
 # La base de datos NO publica puertos: solo la ve el contenedor de la app.
 name: chiavial
 
@@ -33,7 +34,7 @@ services:
       DATA_DIR: /app/data
       UPLOADS_DIR: /app/api/uploads
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${APP_PUERTO:-3000}:3000"
     volumes:
       - fotos:/app/api/uploads
     healthcheck:

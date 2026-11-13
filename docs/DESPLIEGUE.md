@@ -67,16 +67,24 @@ Mínimo: `APP_URL` (con https), `DB_PASSWORD`, `JWT_SECRET`, `CIFRADO_CLAVE`, `A
 docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml logs -f app     # Ctrl+C para salir
 ```
-Al primer arranque se crean las tablas (migraciones), el administrador inicial y, a los 5 segundos, se cargan los datos abiertos de `data/`. Verifique: `curl http://127.0.0.1:3000/api/salud` → `{"ok":true}`.
+Al primer arranque se crean las tablas (migraciones), el administrador inicial y, a los 5 segundos, se cargan los datos abiertos de `data/`. Verifique: `curl http://127.0.0.1:3000/api/salud` → `{"ok":true}` (cambie 3000 por su `APP_PUERTO` si lo definió).
 
 ### 3.5 Crear el sitio, el certificado y el proxy en aaPanel
+Si el dominio ya tiene un sitio creado en aaPanel, use ese; si no:
 1. **Website → Add site**: dominio `chiavial.midominio.co`, sin base de datos, PHP «Static».
-2. En el sitio → **SSL → Let's Encrypt** → seleccione el dominio → Apply. Active **Force HTTPS**.
-3. En el sitio → **Reverse proxy → Add**: destino `http://127.0.0.1:3000`, «Send domain» `$host`.
+2. En el sitio → **SSL → Let's Encrypt** → seleccione el dominio → Apply. Active **Force HTTPS**. Hágalo **antes** del proxy: así la validación del certificado no pasa por la app.
+3. En el sitio → **Reverse proxy → Add**: destino `http://127.0.0.1:3000` (o el `APP_PUERTO` que definió), «Send domain» `$host`.
    Alternativa equivalente: **Conf** → pegue el contenido de `deploy/nginx-chiavial.conf` dentro del bloque `server` del 443.
-4. Asegúrese de que el tamaño máximo de subida sea de al menos 20 MB (`client_max_body_size 20m;`).
+4. En **Conf**, borre o comente los bloques `location ~ .*\.(gif|jpg|jpeg|png|bmp|swf)$` y `location ~ .*\.(js|css)?$` que aaPanel crea por defecto: si se quedan, la página carga en blanco porque Nginx busca los archivos .js y .css en la carpeta del sitio en vez de pedirlos a la app.
+5. Asegúrese de que el tamaño máximo de subida sea de al menos 20 MB (`client_max_body_size 20m;`).
 
 Abra `https://chiavial.midominio.co`, ingrese con el administrador y cambie su contraseña.
+
+### 3.5.1 Si el VPS tiene otros sitios
+- ChíaVial no modifica ni comparte nada con los demás sitios: tiene su propia carpeta, su propio sitio en aaPanel y su base de datos dentro de Docker, sin publicar el puerto 5432 (no choca con MySQL o PostgreSQL que ya existan).
+- Compruebe que el puerto local esté libre: `ss -ltnp | grep ':3000 '`. Si aparece algo, ponga en `.env` un puerto libre, por ejemplo `APP_PUERTO=3010`, y use ese mismo puerto en el proxy inverso.
+- Compruebe la memoria con `free -h`. La primera compilación necesita alrededor de 1 GB libre; si el VPS tiene poca RAM, cree un archivo de intercambio (swap) de 2 GB desde aaPanel (**Home → Memory → swap**, según la versión) o por terminal.
+- Si usa `Restart Nginx` en aaPanel, los demás sitios no se ven afectados; aun así, use **Conf → Save**, que valida la sintaxis antes de recargar.
 
 ### 3.6 Bot de Telegram
 1. En Telegram, hable con **@BotFather** → `/newbot` → nombre `ChíaVial` → usuario, por ejemplo `ChiaVialBot`. Copie el **token**.
@@ -125,7 +133,8 @@ Las migraciones nuevas de la base de datos se aplican solas al arrancar.
 | Síntoma | Causa y solución |
 |---|---|
 | `Defina CIFRADO_CLAVE en producción` en el log | Falta la clave en `.env`. Genérela con `openssl rand -base64 32`. |
-| 502 Bad Gateway | El contenedor `app` no está arriba: `docker compose -f docker-compose.prod.yml logs app`. |
+| 502 Bad Gateway | El contenedor `app` no está arriba (`docker compose -f docker-compose.prod.yml logs app`) o el puerto del proxy no coincide con `APP_PUERTO`. |
+| La página carga en blanco y la consola muestra 404 en archivos .js o .css | Quedan los bloques de caché estática de aaPanel en la configuración del sitio; bórrelos (paso 4 de la sección 3.5). |
 | No se puede iniciar sesión por https | Revise que `APP_URL` empiece por `https://` (la cookie de sesión usa `Secure`). |
 | «413 Request Entity Too Large» al subir fotos | Falta `client_max_body_size 20m;` en la configuración del sitio. |
 | El tablero no muestra gráficos | El navegador no alcanza `www.gstatic.com` (Google Charts). Se muestran las tablas de datos como respaldo. |
