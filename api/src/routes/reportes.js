@@ -272,7 +272,7 @@ r.patch("/:id/estado", requiereRol("funcionario", "admin", "entidad"), async (re
   });
   await registrar(req.usuario.id, "cambio_estado_reporte", "reporte", rep.id, { de: rep.estado, a: estado });
   if (rep.autor_id) {
-    const nombreEstado = estado.replace("_", " ").toLowerCase();
+    const nombreEstado = (NOMBRE_ESTADO[estado] || estado).toLowerCase(); // «en revisión», «en gestión»
     const [asunto, cuerpo] = plantillas.cambioEstado(rep.autor_nombre, rep.id, nombreEstado, comentario);
     await notificar({ id: rep.autor_id, email: rep.email }, "cambio_estado", {
       asunto, cuerpo,
