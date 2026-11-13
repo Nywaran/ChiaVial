@@ -98,6 +98,8 @@ Abra `https://chiavial.midominio.co`, ingrese con el administrador y cambie su c
 4. Reinicie: `docker compose -f docker-compose.prod.yml up -d`. En el log debe aparecer `[telegram] bot @ChiaVialBot en modo polling`.
 5. Pruebe: en ChíaVial → **Mi cuenta → Vincular Telegram** → abra el enlace → **Iniciar**. Luego **Administración → Telegram → Enviarme un mensaje de prueba**.
 
+**Grupo del equipo (opcional).** Cree un grupo en Telegram solo con el equipo (funcionarios y administradores), agregue el bot y ponga el ID del grupo en `TELEGRAM_GRUPO_ID` (es negativo; los supergrupos empiezan por `-100`). Allí llegan los reportes nuevos, los cambios de estado y las asignaciones, sin nombres ni placas de los ciudadanos, y `/estado` responde el total por estado. Pruébelo con **Administración → Telegram → Enviar prueba al grupo**. Si Telegram responde que el grupo «pasó a supergrupo», el registro muestra el ID nuevo que debe usar.
+
 *Modo webhook (opcional):* `TELEGRAM_MODO=webhook` y `TELEGRAM_WEBHOOK_SECRET=$(openssl rand -hex 24)`. Telegram enviará los mensajes a `https://su-dominio/api/telegram/webhook`. Requiere HTTPS válido; el modo polling no lo necesita.
 
 ### 3.7 Respaldos automáticos

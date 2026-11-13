@@ -225,9 +225,9 @@ const NOMBRE_ENVIO: Record<string, string> = { enviado: "Enviado", error: "Error
 function Mensajeria() {
   const { datos, recargar } = useDatos<any>("/admin/notificaciones");
   const [msg, setMsg] = useState<{ ok?: string; error?: string }>({});
-  async function probar() {
+  async function probar(ruta = "/admin/notificaciones/prueba") {
     setMsg({});
-    try { const r = await api.post("/admin/notificaciones/prueba"); setMsg({ ok: r.mensaje }); } catch (e: any) { setMsg({ error: e.message }); }
+    try { const r = await api.post(ruta); setMsg({ ok: r.mensaje }); } catch (e: any) { setMsg({ error: e.message }); }
     recargar();
   }
   const tg = datos?.telegram;
@@ -238,14 +238,18 @@ function Mensajeria() {
         ? <p>Bot {tg.bot ? <strong>@{tg.bot}</strong> : "configurado"} · modo <strong>{tg.modo}</strong>. Usuarios vinculados: {datos.vinculados.length ? datos.vinculados.map((v: any) => `${NOMBRE_ROL[v.rol]} ${v.n}`).join(" · ") : "ninguno"}.</p>
         : <div className="aviso aviso-info">El bot no está configurado. Defina TELEGRAM_BOT_TOKEN y TELEGRAM_BOT_USERNAME en el archivo .env del servidor (vea docs/DESPLIEGUE.md).</div>)}
       <Mensaje ok={msg.ok} error={msg.error} />
-      <button onClick={probar} disabled={!tg?.configurado}>Enviarme un mensaje de prueba</button>
+      {tg?.configurado && <p>Grupo del equipo: {tg.grupo ? <strong>configurado</strong> : <>no configurado (defina TELEGRAM_GRUPO_ID en el .env)</>}. Recibe los reportes nuevos, los cambios de estado y las asignaciones, sin datos personales del ciudadano.</p>}
+      <div style={{ display: "flex", gap: ".5rem", flexWrap: "wrap" }}>
+        <button onClick={() => probar()} disabled={!tg?.configurado}>Enviarme un mensaje de prueba</button>
+        <button className="secundario" onClick={() => probar("/admin/notificaciones/prueba-grupo")} disabled={!tg?.grupo}>Enviar prueba al grupo</button>
+      </div>
       <h3 style={{ marginTop: "1.5rem" }}>Registro de notificaciones</h3>
       <div className="tabla-env"><table>
         <thead><tr><th>Fecha</th><th>Usuario</th><th>Canal</th><th>Evento</th><th>Resultado</th></tr></thead>
         <tbody>{datos?.notificaciones?.map((n: any) => (
-          <tr key={n.id}><td>{fmtFechaHora(n.creado_en)}</td><td>{n.usuario || "—"}{n.rol && <div className="muy-tenue">{NOMBRE_ROL[n.rol]}</div>}</td>
+          <tr key={n.id}><td>{fmtFechaHora(n.creado_en)}</td><td>{n.usuario || (n.detalle?.startsWith("Grupo") ? "Grupo del equipo" : "—")}{n.rol && <div className="muy-tenue">{NOMBRE_ROL[n.rol]}</div>}</td>
             <td>{n.canal === "telegram" ? "Telegram" : "Correo"}</td><td>{NOMBRE_EVENTO[n.evento] || n.evento}</td>
-            <td>{NOMBRE_ENVIO[n.estado] || n.estado}{n.detalle && <div className="muy-tenue">{n.detalle}</div>}</td></tr>
+            <td>{NOMBRE_ENVIO[n.estado] || n.estado}{n.detalle && n.detalle !== "Grupo del equipo" && <div className="muy-tenue">{n.detalle}</div>}</td></tr>
         ))}</tbody>
       </table></div>
       {datos && !datos.notificaciones.length && <p className="tenue">Aún no hay notificaciones registradas.</p>}

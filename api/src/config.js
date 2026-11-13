@@ -56,6 +56,8 @@ export const config = {
     botUsername: (process.env.TELEGRAM_BOT_USERNAME || "").replace(/^@/, ""),
     modo: process.env.TELEGRAM_MODO || "polling", // polling | webhook | off
     webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || "",
+    // Grupo del equipo (ID negativo, p. ej. -1001234567890): recibe las alertas de gestión de reportes
+    grupoId: (process.env.TELEGRAM_GRUPO_ID || "").trim(),
     apiUrl: process.env.TELEGRAM_API_URL || "https://api.telegram.org",
   },
 };

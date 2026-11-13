@@ -10,7 +10,8 @@ import { q, transaccion } from "../db.js";
 import { config } from "../config.js";
 import { requiereSesion, requiereRol } from "../middleware/auth.js";
 import { plantillas } from "../lib/correo.js";
-import { notificar, alertarRoles } from "../lib/notificaciones.js";
+import { notificar, alertarRoles, alertarGrupo } from "../lib/notificaciones.js";
+import { NOMBRE_ESTADO } from "../lib/telegram.js";
 import { registrar } from "../lib/bitacora.js";
 import { cifrar, descifrarSeguro } from "../lib/cifrado.js";
 
@@ -114,10 +115,13 @@ r.post("/", requiereRol("ciudadano"), recibirFotos, async (req, res) => {
     await c.query(`INSERT INTO reporte_historial (reporte_id, estado_nuevo, usuario_id) VALUES ($1,'RECIBIDO',$2)`, [nuevoId, req.usuario.id]);
     return nuevoId;
   });
-  // Alerta por Telegram a funcionarios/admin vinculados (no bloquea la respuesta)
-  q(`SELECT nombre FROM catalogos WHERE tipo=$1 AND codigo=$2`, [d.tipo, d.categoria])
-    .then(({ rows }) => alertarRoles(["funcionario", "admin"], "nuevo_reporte",
-      `🆕 Nuevo reporte #${id}\n${rows[0]?.nombre || d.categoria} (${d.tipo})\n${d.descripcion.slice(0, 200)}\n\n${config.appUrl}/panel`))
+  // Alertas por Telegram a funcionarios/admin vinculados y al grupo del equipo (no bloquean la respuesta)
+  q(`SELECT c.nombre, r.vereda FROM reportes r JOIN catalogos c ON c.tipo = r.tipo AND c.codigo = r.categoria WHERE r.id = $1`, [id])
+    .then(async ({ rows }) => {
+      const texto = `🆕 Nuevo reporte #${id}\n${rows[0]?.nombre || d.categoria} (${d.tipo})${rows[0]?.vereda ? ` · ${rows[0].vereda}` : ""}\n${d.descripcion.slice(0, 200)}\n\n${config.appUrl}/panel`;
+      await alertarRoles(["funcionario", "admin"], "nuevo_reporte", texto);
+      await alertarGrupo("nuevo_reporte", texto);
+    })
     .catch((e) => console.warn("[notificaciones]", e.message));
   res.status(201).json({ id, mensaje: "Reporte recibido. Puedes seguir su estado en «Mis reportes»." });
 });
@@ -275,6 +279,9 @@ r.patch("/:id/estado", requiereRol("funcionario", "admin", "entidad"), async (re
       telegram: `📋 Tu reporte #${rep.id} cambió a «${nombreEstado}».${comentario ? `\nComentario: ${comentario}` : ""}\n\n${config.appUrl}/mis-reportes`,
     });
   }
+  // Grupo del equipo: sin datos del ciudadano
+  alertarGrupo("cambio_estado",
+    `🔄 Reporte #${rep.id}: ${NOMBRE_ESTADO[rep.estado] || rep.estado} → ${NOMBRE_ESTADO[estado] || estado}\nPor: ${req.usuario.nombre}${comentario ? `\nComentario: ${comentario}` : ""}`);
   res.json({ ok: true });
 });
 
@@ -290,6 +297,7 @@ r.patch("/:id/asignar", requiereRol("funcionario", "admin"), async (req, res) =>
   const dest = await q(`SELECT id, email FROM usuarios WHERE entidad_id=$1 AND rol='entidad' AND activo`, [entidadId]);
   const [asunto, cuerpo] = plantillas.asignacion(req.params.id, ent.rows[0].nombre, fecha);
   for (const d of dest.rows) await notificar(d, "asignacion", { asunto, cuerpo });
+  alertarGrupo("asignacion", `📌 Reporte #${req.params.id} asignado a ${ent.rows[0].nombre}${fecha ? `\nFecha objetivo: ${fecha}` : ""}\nPor: ${req.usuario.nombre}`);
   res.json({ ok: true });
 });
 

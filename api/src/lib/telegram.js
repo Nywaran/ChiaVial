@@ -6,7 +6,7 @@ import { cifrar, descifrarSeguro, hmac, hashToken, tokenAleatorio } from "./cifr
 import { registrar } from "./bitacora.js";
 
 const CTX_CHAT = "telegram_vinculos.chat_id";
-const NOMBRE_ESTADO = {
+export const NOMBRE_ESTADO = {
   RECIBIDO: "Recibido", EN_REVISION: "En revisión", ATENDIDO: "Atendido", DESCARTADO: "Descartado",
   VERIFICADO: "Verificado", EN_GESTION: "En gestión", RESUELTO: "Resuelto", RECHAZADO: "Rechazado",
 };
@@ -29,7 +29,11 @@ export async function api(metodo, parametros = {}, { timeoutMs = 10000 } = {}) {
     signal: AbortSignal.timeout(timeoutMs),
   });
   const datos = await r.json().catch(() => ({}));
-  if (!r.ok || !datos.ok) throw new Error(`Telegram ${metodo}: ${datos.description || r.status}`);
+  if (!r.ok || !datos.ok) {
+    const nuevo = datos.parameters?.migrate_to_chat_id;
+    const pista = nuevo ? ` (el grupo pasó a supergrupo: use TELEGRAM_GRUPO_ID=${nuevo})` : "";
+    throw new Error(`Telegram ${metodo}: ${datos.description || r.status}${pista}`);
+  }
   return datos.result;
 }
 
@@ -96,6 +100,26 @@ const AYUDA = [
   "Para vincular tu cuenta, entra a ChíaVial → Mi cuenta → «Vincular Telegram».",
 ].join("\n");
 
+async function resumenEstados(entidadId = null) {
+  const { rows } = await q(
+    `SELECT estado, count(*)::int AS n FROM reportes WHERE NOT spam
+       AND ($1::int IS NULL OR entidad_asignada_id = $1) GROUP BY 1 ORDER BY 1`, [entidadId]);
+  if (!rows.length) return "No hay reportes registrados.";
+  return ["Reportes por estado:", ...rows.map((r) => `${NOMBRE_ESTADO[r.estado] || r.estado}: ${r.n}`)].join("\n");
+}
+
+export const esGrupoEquipo = (chatId) => !!config.telegram.grupoId && String(chatId) === config.telegram.grupoId;
+
+/** Mensajes en el grupo del equipo: solo /estado y /ayuda; el resto del chat se ignora. */
+async function procesarGrupo(chatId, comando) {
+  let respuesta = null;
+  if (comando === "/estado") respuesta = await resumenEstados();
+  else if (comando === "/ayuda" || comando === "/start")
+    respuesta = "Este es el grupo del equipo de ChíaVial. Aquí llegan los reportes nuevos, los cambios de estado y las asignaciones.\n\n/estado – reportes por estado";
+  if (respuesta) await enviarTexto(chatId, respuesta).catch((e) => console.warn("[telegram]", e.message));
+  return respuesta;
+}
+
 async function comandoEstado(chatId) {
   const u = await usuarioPorChat(chatId);
   if (!u) return "Este chat no está vinculado a ninguna cuenta. Entra a ChíaVial → Mi cuenta → «Vincular Telegram».";
@@ -106,12 +130,7 @@ async function comandoEstado(chatId) {
     if (!rows.length) return "Aún no tienes reportes.";
     return ["Tus últimos reportes:", ...rows.map((r) => `#${r.id} · ${r.categoria} · ${NOMBRE_ESTADO[r.estado] || r.estado}`)].join("\n");
   }
-  const { rows } = await q(
-    `SELECT estado, count(*)::int AS n FROM reportes WHERE NOT spam
-       AND ($1::int IS NULL OR entidad_asignada_id = $1) GROUP BY 1 ORDER BY 1`,
-    [u.rol === "entidad" ? u.entidad_id : null]);
-  if (!rows.length) return "No hay reportes registrados.";
-  return ["Reportes por estado:", ...rows.map((r) => `${NOMBRE_ESTADO[r.estado] || r.estado}: ${r.n}`)].join("\n");
+  return resumenEstados(u.rol === "entidad" ? u.entidad_id : null);
 }
 
 /** Procesa un update de Telegram (mensaje entrante). Devuelve el texto respondido (útil en pruebas). */
@@ -119,8 +138,11 @@ export async function procesarActualizacion(update) {
   const msg = update?.message;
   if (!msg?.chat?.id || typeof msg.text !== "string") return null;
   const chatId = msg.chat.id;
-  if (msg.chat.type !== "private") return null; // solo chats privados
   const [comando, arg] = msg.text.trim().split(/\s+/, 2);
+  if (msg.chat.type !== "private") {
+    // En grupos solo se atiende el grupo del equipo configurado
+    return esGrupoEquipo(chatId) ? procesarGrupo(chatId, comando.split("@")[0]) : null;
+  }
   let respuesta;
   switch (comando.split("@")[0]) {
     case "/start":

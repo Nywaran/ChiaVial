@@ -12,7 +12,7 @@ import { ingestarTodo, ingestarConjunto } from "../etl/ingesta.js";
 import { ORDEN_INGESTA } from "../etl/conjuntos.js";
 import { geocodificarPendientes } from "../lib/geocodificar.js";
 import * as N from "../lib/normalizar.js";
-import { porTelegram } from "../lib/notificaciones.js";
+import { porTelegram, alertarGrupo, grupoConfigurado } from "../lib/notificaciones.js";
 import { telegramConfigurado } from "../lib/telegram.js";
 
 const r = Router();
@@ -225,6 +225,13 @@ r.get("/correos", soloAdmin, async (req, res) => {
 });
 
 // ───────── Mensajería (Telegram) ─────────
+r.post("/notificaciones/prueba-grupo", soloAdmin, async (req, res) => {
+  if (!grupoConfigurado()) return res.status(400).json({ resultado: "sin_configurar", mensaje: "Defina TELEGRAM_GRUPO_ID en el .env del servidor." });
+  const resultado = await alertarGrupo("prueba", `✅ Mensaje de prueba de ChíaVial enviado por ${req.usuario.nombre}. Aquí llegarán los reportes nuevos, los cambios de estado y las asignaciones.`);
+  res.status(resultado === "enviado" ? 200 : 400).json({ resultado,
+    mensaje: resultado === "enviado" ? "Mensaje enviado al grupo." : "Telegram rechazó el envío al grupo; revisa el registro (¿el bot está en el grupo? ¿el ID es correcto?)." });
+});
+
 r.get("/notificaciones", soloAdmin, async (req, res) => {
   const [lista, resumen, vinculados] = await Promise.all([
     q(`SELECT n.id, n.canal, n.evento, n.estado, n.detalle, n.creado_en, u.nombre AS usuario, u.rol
@@ -234,7 +241,7 @@ r.get("/notificaciones", soloAdmin, async (req, res) => {
   ]);
   res.json({
     notificaciones: lista.rows, resumen: resumen.rows, vinculados: vinculados.rows,
-    telegram: { configurado: telegramConfigurado(), modo: config.telegram.modo, bot: config.telegram.botUsername || null },
+    telegram: { configurado: telegramConfigurado(), modo: config.telegram.modo, bot: config.telegram.botUsername || null, grupo: grupoConfigurado() },
   });
 });
 

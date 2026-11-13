@@ -2,6 +2,7 @@
 // con registro de cada envío en la tabla `notificaciones`.
 import { q } from "../db.js";
 import { enviarCorreo } from "./correo.js";
+import { config } from "../config.js";
 import { telegramConfigurado, chatDeUsuario, enviarTexto } from "./telegram.js";
 
 async function registrarEnvio(usuarioId, canal, evento, estado, detalle = null) {
@@ -46,6 +47,22 @@ export async function notificar(usuario, evento, msg) {
   if (!msg.soloTelegram && usuario.email) res.correo = await porCorreo(usuario.id, usuario.email, evento, msg.asunto, msg.cuerpo);
   res.telegram = await porTelegram(usuario.id, evento, msg.telegram || `${msg.asunto}\n\n${msg.cuerpo}`);
   return res;
+}
+
+export const grupoConfigurado = () => telegramConfigurado() && !!config.telegram.grupoId;
+
+/** Mensaje al grupo de Telegram del equipo (si está configurado). Nunca lanza error. */
+export async function alertarGrupo(evento, texto) {
+  if (!grupoConfigurado()) return "omitido";
+  try {
+    await enviarTexto(config.telegram.grupoId, texto);
+    await registrarEnvio(null, "telegram", evento, "enviado", "Grupo del equipo");
+    return "enviado";
+  } catch (e) {
+    await registrarEnvio(null, "telegram", evento, "error", `Grupo del equipo: ${e.message}`);
+    console.warn("[telegram] grupo:", e.message);
+    return "error";
+  }
 }
 
 /** Alerta por Telegram a todos los usuarios activos de ciertos roles (p. ej. funcionarios ante un reporte nuevo). */

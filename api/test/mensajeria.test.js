@@ -19,6 +19,8 @@ process.env.TELEGRAM_BOT_TOKEN = "123:prueba";
 process.env.TELEGRAM_BOT_USERNAME = "ChiaVialBot";
 process.env.TELEGRAM_MODO = "webhook";
 process.env.TELEGRAM_WEBHOOK_SECRET = "secreto-de-prueba-0123456789";
+process.env.TELEGRAM_GRUPO_ID = "-1009876543210";
+const GRUPO = "-1009876543210";
 
 const { pool, q, migrar } = await import("../src/db.js");
 const { crearApp } = await import("../src/app.js");
@@ -40,7 +42,7 @@ telegram.usarFetch(async (url, opts) => {
   return { ok: true, json: async () => ({ ok: true, result: metodo === "getMe" ? { username: "ChiaVialBot" } : { message_id: 1 } }) };
 });
 const esperar = (ms = 150) => new Promise((r) => setTimeout(r, ms));
-const msj = (chatId, text) => ({ update_id: Date.now(), message: { chat: { id: chatId, type: "private" }, text } });
+const msj = (chatId, text, type = "private") => ({ update_id: Date.now(), message: { chat: { id: chatId, type }, text } });
 
 async function sesion(email, password) {
   const ag = request.agent(app);
@@ -105,7 +107,7 @@ test("cambio de estado notifica al ciudadano por correo y Telegram", async () =>
   assert.equal(r.status, 201, JSON.stringify(r.body));
   await esperar(300);
   // Alerta de nuevo reporte a la funcionaria (y no a la ciudadana)
-  const alerta = enviados.find((e) => /Nuevo reporte/.test(e.texto));
+  const alerta = enviados.find((e) => /Nuevo reporte/.test(e.texto) && e.chat !== GRUPO);
   assert.ok(alerta, "alerta de nuevo reporte");
   assert.equal(alerta.chat, "555002");
   assert.ok(!enviados.some((e) => e.chat === "555001"));
@@ -113,8 +115,30 @@ test("cambio de estado notifica al ciudadano por correo y Telegram", async () =>
   assert.equal((await func.patch(`/api/reportes/${r.body.id}/estado`).set(H).send({ estado: "VERIFICADO" })).status, 200);
   const aviso = enviados.find((e) => e.chat === "555001");
   assert.match(aviso.texto, new RegExp(`#${r.body.id} cambió a «verificado»`));
-  const log = await q(`SELECT canal, evento, estado FROM notificaciones WHERE evento = 'cambio_estado' ORDER BY canal`);
+  await esperar();
+  // El grupo del equipo recibe el reporte nuevo y el cambio de estado, sin datos del ciudadano
+  const grupo = enviados.filter((e) => e.chat === GRUPO).map((e) => e.texto);
+  assert.ok(grupo.some((t) => new RegExp(`Nuevo reporte #${r.body.id}`).test(t)));
+  assert.ok(grupo.some((t) => new RegExp(`Reporte #${r.body.id}: Recibido → Verificado\nPor: Funcionaria`).test(t)));
+  assert.ok(!grupo.some((t) => /Ana/.test(t)));
+  const log = await q(`SELECT canal, evento, estado FROM notificaciones WHERE evento = 'cambio_estado' AND usuario_id IS NOT NULL ORDER BY canal`);
   assert.deepEqual(log.rows.map((x) => `${x.canal}:${x.estado}`), ["correo:sin_configurar", "telegram:enviado"]);
+});
+
+test("grupo del equipo: /estado en el grupo configurado; otros grupos se ignoran", async () => {
+  enviados.length = 0;
+  await request(app).post("/api/telegram/webhook").set(WH).send(msj(Number(GRUPO), "/estado@ChiaVialBot", "supergroup"));
+  await esperar();
+  assert.equal(enviados.at(-1).chat, GRUPO);
+  assert.match(enviados.at(-1).texto, /Reportes por estado:\nVerificado: 1/);
+  enviados.length = 0;
+  await request(app).post("/api/telegram/webhook").set(WH).send(msj(-100111, "/estado", "group"));
+  await request(app).post("/api/telegram/webhook").set(WH).send(msj(Number(GRUPO), "hola a todos", "supergroup"));
+  await esperar();
+  assert.equal(enviados.length, 0);
+  const p = await admin.post("/api/admin/notificaciones/prueba-grupo").set(H);
+  assert.equal(p.status, 200, JSON.stringify(p.body));
+  assert.equal(enviados.at(-1).chat, GRUPO);
 });
 
 test("comandos del bot: /estado y /desvincular; preferencias", async () => {
