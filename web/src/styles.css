@@ -185,3 +185,71 @@ h2.seccion { margin: 1.75rem 0 0; font-size: 1.15rem; color: var(--texto-2); bor
 .tarjeta.gchart h2 { font-size: 1rem; margin: 0 0 0.25rem; }
 .tarjeta.gchart [role="img"] { width: 100%; min-height: 200px; }
 .tarjeta.gchart .tabla-env { max-height: 340px; overflow: auto; }
+
+/* ───────── Chat flotante (todas las páginas) ───────── */
+.chat-flotante { position: fixed; right: 20px; bottom: 20px; z-index: 1200; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+.chat-boton { width: 60px; height: 60px; border-radius: 50%; padding: 0; position: relative; box-shadow: 0 6px 18px rgba(21, 70, 53, 0.35); }
+.chat-boton .chat-x { font-size: 2rem; line-height: 1; font-weight: 400; }
+.chat-insignia { position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--error); color: #fff; font-size: 0.75rem; display: grid; place-items: center; border: 2px solid #fff; }
+.chat-panel { width: min(370px, calc(100vw - 32px)); height: min(540px, calc(100vh - 120px)); background: var(--superficie); border: 1px solid var(--borde); border-radius: 14px; box-shadow: 0 12px 40px rgba(20, 20, 15, 0.2); display: flex; flex-direction: column; overflow: hidden; }
+.chat-cabeza { background: var(--verde); color: #fff; padding: 0.75rem 0.5rem 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; }
+.chat-cabeza strong { display: block; font-size: 1.02rem; }
+.chat-cabeza span { font-size: 0.8rem; opacity: 0.85; }
+.chat-cerrar { background: none; font-size: 1.6rem; font-weight: 400; min-height: 40px; width: 40px; padding: 0; }
+.chat-cerrar:hover { background: rgba(255, 255, 255, 0.12); }
+.chat-mensajes, .atencion-mensajes { flex: 1; overflow-y: auto; padding: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem; background: var(--fondo); }
+.chat-intro { font-size: 0.85rem; color: var(--texto-2); background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px; padding: 0.6rem 0.75rem; margin: 0 0 0.25rem; }
+.chat-msj { max-width: 82%; padding: 0.45rem 0.7rem 0.3rem; border-radius: 12px; background: var(--superficie); border: 1px solid var(--borde); align-self: flex-start; }
+.chat-msj.propio { align-self: flex-end; background: var(--verde-claro); border-color: #c7ddd3; }
+.chat-msj p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-msj time { display: block; text-align: right; font-size: 0.7rem; color: var(--texto-3); margin-top: 0.15rem; }
+.chat-quien { display: block; font-size: 0.74rem; font-weight: 600; color: var(--verde); margin-bottom: 0.1rem; }
+.chat-nota { font-size: 0.8rem; color: var(--texto-3); text-align: center; margin: 0.25rem 0; }
+.chat-nota .enlace { color: var(--verde); font-weight: 600; }
+.chat-form { border-top: 1px solid var(--borde); padding: 0.6rem; display: flex; flex-direction: column; gap: 0.45rem; background: var(--superficie); }
+.chat-form input { font-size: 0.9rem; }
+.chat-fila { display: flex; gap: 0.45rem; align-items: flex-end; }
+.chat-fila textarea { flex: 1; resize: none; font: inherit; font-size: 0.95rem; min-height: 44px; max-height: 120px; }
+.chat-fila button { min-width: 48px; }
+.chat-error { color: var(--error); font-size: 0.82rem; margin: 0; }
+@media (max-width: 600px) {
+  .chat-flotante { right: 12px; bottom: 12px; }
+  .chat-panel { height: calc(100vh - 100px); }
+}
+@media print { .chat-flotante { display: none; } }
+
+/* ───────── Atención (equipo) ───────── */
+.atencion-titulo { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.en-vivo { font-size: 0.8rem; color: var(--texto-3); white-space: nowrap; display: inline-flex; align-items: center; gap: 0.35rem; }
+.en-vivo::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #b7b5ad; }
+.en-vivo.si { color: var(--ok); }
+.en-vivo.si::before { background: var(--ok); }
+.atencion { display: grid; grid-template-columns: 330px 1fr; gap: 1rem; height: calc(100vh - 230px); min-height: 480px; }
+.atencion > .tarjeta { padding: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+.segmentos { display: flex; border-bottom: 1px solid var(--borde); }
+.segmentos button { flex: 1; background: none; color: var(--texto-2); border: none; border-bottom: 3px solid transparent; border-radius: 0; font-size: 0.85rem; padding: 0.5rem; }
+.segmentos button:hover { background: var(--superficie-2); }
+.segmentos button.activo { color: var(--verde); border-bottom-color: var(--verde); }
+.atencion-lista ul { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+.atencion-lista li a { display: flex; flex-direction: column; gap: 0.15rem; padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--borde); color: inherit; text-decoration: none; }
+.atencion-lista li a:hover { background: var(--superficie-2); }
+.atencion-lista li a.activa { background: var(--verde-claro); box-shadow: inset 3px 0 0 var(--verde); }
+.atencion-lista .fila-1 { display: flex; justify-content: space-between; gap: 0.5rem; }
+.atencion-lista .fila-1 time { font-size: 0.75rem; color: var(--texto-3); white-space: nowrap; }
+.atencion-lista .fila-2 { display: flex; align-items: center; gap: 0.4rem; font-size: 0.86rem; color: var(--texto-2); }
+.atencion-lista .vista-previa { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atencion-lista .punto { width: 9px; height: 9px; border-radius: 50%; background: var(--ambar); flex: none; }
+.atencion-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 1rem; border-bottom: 1px solid var(--borde); }
+.atencion-cabeza h2 { margin: 0; font-size: 1.1rem; }
+.atencion-cabeza p { margin: 0.1rem 0 0; }
+.atencion-cabeza > div { flex: 1; min-width: 0; }
+.atencion-vacio { margin: auto; padding: 2rem; text-align: center; }
+.volver-lista { display: none; }
+@media (max-width: 800px) {
+  .atencion { grid-template-columns: 1fr; height: auto; }
+  .atencion-chat { height: calc(100vh - 160px); }
+  .atencion.con-seleccion .atencion-lista { display: none; }
+  .atencion:not(.con-seleccion) .atencion-chat { display: none; }
+  .volver-lista { display: inline-flex; }
+  .atencion-cabeza { flex-wrap: wrap; }
+}

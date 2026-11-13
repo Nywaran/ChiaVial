@@ -37,7 +37,9 @@ export async function api(metodo, parametros = {}, { timeoutMs = 10000 } = {}) {
   return datos.result;
 }
 
-export const enviarTexto = (chatId, texto) => api("sendMessage", { chat_id: chatId, text: texto, disable_web_page_preview: true });
+/** Envía un texto; `extra` admite parámetros de sendMessage como reply_markup (botones). */
+export const enviarTexto = (chatId, texto, extra = {}) =>
+  api("sendMessage", { chat_id: chatId, text: texto, disable_web_page_preview: true, ...extra });
 
 // ───────── Vinculación de cuentas ─────────
 

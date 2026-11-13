@@ -140,6 +140,7 @@ Las migraciones nuevas de la base de datos se aplican solas al arrancar.
 | No se puede iniciar sesión por https | Revise que `APP_URL` empiece por `https://` (la cookie de sesión usa `Secure`). |
 | «413 Request Entity Too Large» al subir fotos | Falta `client_max_body_size 20m;` en la configuración del sitio. |
 | El tablero no muestra gráficos | El navegador no alcanza `www.gstatic.com` (Google Charts). Se muestran las tablas de datos como respaldo. |
+| El chat no se actualiza en vivo (hay que recargar) | El proxy está acumulando la respuesta. La app ya envía `X-Accel-Buffering: no`; si aun así ocurre, agregue `proxy_buffering off;` en el bloque `location /` del sitio. |
 | El bot no responde | Revise `TELEGRAM_BOT_TOKEN` y el log `[telegram]`. Solo un servidor puede hacer polling con el mismo bot. |
 
 ## 6. Alternativa sin Docker

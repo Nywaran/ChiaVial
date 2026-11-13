@@ -73,6 +73,7 @@ y en aaPanel: sitio con Let's Encrypt + proxy inverso a `http://127.0.0.1:3000`.
 - **Tablero de indicadores** (`/tablero`, funcionario y administrador): Google Charts con datos de PostgreSQL (`GET /api/dashboard`): tiempos de respuesta, reportes por estado/categoría/semana/vereda, siniestros por mes y gravedad, comparendos por grupo. `npm run demo` (en `api/`) carga datos ficticios para verlo con movimiento; `npm run demo -- --borrar` los elimina.
 - **Cifrado** (`api/src/lib/cifrado.js`): AES-256-GCM para placas y chats de Telegram, HKDF-SHA256 para derivar claves, HMAC-SHA256 como índice ciego, SHA-256 para tokens de un solo uso y bcrypt para contraseñas. Clave maestra en `CIFRADO_CLAVE`.
 - **Telegram** (`api/src/lib/telegram.js`, `notificaciones.js`): el ciudadano vincula su cuenta desde «Mi cuenta» y recibe los cambios de estado; funcionarios y administradores reciben alertas de reportes nuevos; las entidades, las asignaciones. Cada envío queda en la tabla `notificaciones` (Administración → Telegram).
+- **Chat de atención** (`api/src/routes/chat.js`, `web/src/components/ChatFlotante.tsx`, `web/src/pages/Atencion.tsx`): burbuja abajo a la derecha en todas las páginas; cualquier persona escribe sin cuenta. Cada mensaje avisa al grupo de Telegram con un enlace a `/atencion/:id`, donde funcionarios y administradores responden en tiempo real (Server-Sent Events). Los mensajes se guardan cifrados con AES-256-GCM.
 
 ## Roles
 

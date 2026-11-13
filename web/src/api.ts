@@ -7,13 +7,14 @@ export class ErrorApi extends Error {
   }
 }
 
-async function solicitar<T>(metodo: string, ruta: string, cuerpo?: unknown): Promise<T> {
+async function solicitar<T>(metodo: string, ruta: string, cuerpo?: unknown, cabeceras: Record<string, string> = {}): Promise<T> {
   const esForm = cuerpo instanceof FormData;
   const r = await fetch(`/api${ruta}`, {
     method: metodo,
     credentials: "same-origin",
     headers: {
       "X-Requested-With": "ChiaVial",
+      ...cabeceras,
       ...(cuerpo !== undefined && !esForm ? { "Content-Type": "application/json" } : {}),
     },
     body: cuerpo === undefined ? undefined : esForm ? (cuerpo as FormData) : JSON.stringify(cuerpo),
@@ -25,8 +26,8 @@ async function solicitar<T>(metodo: string, ruta: string, cuerpo?: unknown): Pro
 }
 
 export const api = {
-  get: <T = any>(ruta: string) => solicitar<T>("GET", ruta),
-  post: <T = any>(ruta: string, cuerpo?: unknown) => solicitar<T>("POST", ruta, cuerpo ?? {}),
+  get: <T = any>(ruta: string, cabeceras?: Record<string, string>) => solicitar<T>("GET", ruta, undefined, cabeceras),
+  post: <T = any>(ruta: string, cuerpo?: unknown, cabeceras?: Record<string, string>) => solicitar<T>("POST", ruta, cuerpo ?? {}, cabeceras),
   put: <T = any>(ruta: string, cuerpo?: unknown) => solicitar<T>("PUT", ruta, cuerpo ?? {}),
   patch: <T = any>(ruta: string, cuerpo?: unknown) => solicitar<T>("PATCH", ruta, cuerpo ?? {}),
   del: <T = any>(ruta: string) => solicitar<T>("DELETE", ruta),

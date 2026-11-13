@@ -11,7 +11,7 @@ async function registrarEnvio(usuarioId, canal, evento, estado, detalle = null) 
 }
 
 /** Envía por Telegram si el usuario tiene el chat vinculado y la preferencia activa. */
-export async function porTelegram(usuarioId, evento, texto) {
+export async function porTelegram(usuarioId, evento, texto, extra = {}) {
   const { rows } = await q(`SELECT notif_telegram FROM usuarios WHERE id = $1 AND activo`, [usuarioId]);
   if (!rows[0]?.notif_telegram) return "omitido";
   const chat = await chatDeUsuario(usuarioId);
@@ -21,7 +21,7 @@ export async function porTelegram(usuarioId, evento, texto) {
     return "sin_configurar";
   }
   try {
-    await enviarTexto(chat, texto);
+    await enviarTexto(chat, texto, extra);
     await registrarEnvio(usuarioId, "telegram", evento, "enviado");
     return "enviado";
   } catch (e) {
@@ -52,10 +52,10 @@ export async function notificar(usuario, evento, msg) {
 export const grupoConfigurado = () => telegramConfigurado() && !!config.telegram.grupoId;
 
 /** Mensaje al grupo de Telegram del equipo (si está configurado). Nunca lanza error. */
-export async function alertarGrupo(evento, texto) {
+export async function alertarGrupo(evento, texto, extra = {}) {
   if (!grupoConfigurado()) return "omitido";
   try {
-    await enviarTexto(config.telegram.grupoId, texto);
+    await enviarTexto(config.telegram.grupoId, texto, extra);
     await registrarEnvio(null, "telegram", evento, "enviado", "Grupo del equipo");
     return "enviado";
   } catch (e) {
@@ -66,12 +66,19 @@ export async function alertarGrupo(evento, texto) {
 }
 
 /** Alerta por Telegram a todos los usuarios activos de ciertos roles (p. ej. funcionarios ante un reporte nuevo). */
-export async function alertarRoles(roles, evento, texto, { entidadId = null } = {}) {
+export async function alertarRoles(roles, evento, texto, { entidadId = null, extra = {} } = {}) {
   const { rows } = await q(
     `SELECT u.id FROM usuarios u JOIN telegram_vinculos v ON v.usuario_id = u.id
       WHERE u.activo AND u.notif_telegram AND u.rol = ANY($1) AND ($2::int IS NULL OR u.entidad_id = $2)`,
     [roles, entidadId]);
   let enviados = 0;
-  for (const u of rows) if ((await porTelegram(u.id, evento, texto)) === "enviado") enviados++;
+  for (const u of rows) if ((await porTelegram(u.id, evento, texto, extra)) === "enviado") enviados++;
   return { destinatarios: rows.length, enviados };
+}
+
+/** Aviso al equipo: al grupo si está configurado; si no, en privado a administradores y funcionarios vinculados. */
+export async function avisarEquipo(evento, texto, extra = {}) {
+  if (grupoConfigurado()) return alertarGrupo(evento, texto, extra);
+  const r = await alertarRoles(["admin", "funcionario"], evento, texto, { extra });
+  return r.enviados ? "enviado" : "omitido";
 }

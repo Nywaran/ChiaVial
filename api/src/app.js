@@ -13,6 +13,7 @@ import reportes from "./routes/reportes.js";
 import admin from "./routes/admin.js";
 import telegram, { webhook as webhookTelegram } from "./routes/telegram.js";
 import dashboard from "./routes/dashboard.js";
+import chat from "./routes/chat.js";
 
 export function crearApp() {
   const app = express();
@@ -55,6 +56,7 @@ export function crearApp() {
   app.use("/api/admin", admin);
   app.use("/api/telegram", telegram);
   app.use("/api/dashboard", dashboard);
+  app.use("/api/chat", chat);
   app.use("/api", (req, res) => res.status(404).json({ error: "Ruta no encontrada." }));
 
   // En producción la API sirve también la interfaz web compilada

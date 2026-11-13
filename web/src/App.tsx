@@ -11,6 +11,8 @@ import Politica from "./pages/Politica";
 import Panel from "./pages/Panel";
 import Admin from "./pages/Admin";
 import Dashboard from "./pages/Dashboard";
+import Atencion from "./pages/Atencion";
+import ChatFlotante from "./components/ChatFlotante";
 
 export default function App() {
   const { usuario, salir } = useSesion();
@@ -29,6 +31,7 @@ export default function App() {
             {usuario?.rol === "ciudadano" && <NavLink to="/mis-reportes" className={({ isActive }) => (isActive ? "activo" : "")}>Mis reportes</NavLink>}
             {esStaff && <NavLink to="/panel" className={({ isActive }) => (isActive ? "activo" : "")}>Panel de gestión</NavLink>}
             {(usuario?.rol === "funcionario" || usuario?.rol === "admin") && <NavLink to="/tablero" className={({ isActive }) => (isActive ? "activo" : "")}>Tablero</NavLink>}
+            {(usuario?.rol === "funcionario" || usuario?.rol === "admin") && <NavLink to="/atencion" className={({ isActive }) => (isActive ? "activo" : "")}>Atención</NavLink>}
             {usuario?.rol === "admin" && <NavLink to="/admin" className={({ isActive }) => (isActive ? "activo" : "")}>Administración</NavLink>}
           </nav>
           <div className="usuario">
@@ -52,6 +55,8 @@ export default function App() {
           <Route path="/mis-reportes" element={<Protegida roles={["ciudadano"]}><MisReportes /></Protegida>} />
           <Route path="/panel" element={<Protegida roles={["funcionario", "admin", "entidad"]}><Panel /></Protegida>} />
           <Route path="/tablero" element={<Protegida roles={["funcionario", "admin"]}><Dashboard /></Protegida>} />
+          <Route path="/atencion" element={<Protegida roles={["funcionario", "admin"]}><Atencion /></Protegida>} />
+          <Route path="/atencion/:id" element={<Protegida roles={["funcionario", "admin"]}><Atencion /></Protegida>} />
           <Route path="/admin" element={<Protegida roles={["admin"]}><Admin /></Protegida>} />
           <Route path="/ingresar" element={<Ingresar />} />
           <Route path="/registro" element={<Registro />} />
@@ -69,6 +74,7 @@ export default function App() {
           Ministerio de Transporte (datos.gov.co). Mapas © colaboradores de OpenStreetMap. <Link to="/politica-de-datos">Política de tratamiento de datos</Link>
         </div>
       </footer>
+      <ChatFlotante />
     </>
   );
 }
